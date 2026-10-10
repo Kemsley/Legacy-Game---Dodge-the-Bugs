@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legacy vs. AI Cage</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
+        .game-container { width: 100%; max-width: 480px; height: 100vh; max-height: 800px; background: #1e293b; display: flex; flex-direction: column; position: relative; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5); border: 1px solid #334155; }
+        header { padding: 16px; background: #0f172a; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        h1 { font-size: 1rem; color: #38bdf8; text-transform: uppercase; letter-spacing: 1px; }
+        .score { font-size: 1.2rem; font-weight: bold; color: #facc15; }
+        #canvasWrap { flex: 1; position: relative; background: #090d16; overflow: hidden; cursor: pointer; }
+        canvas { display: block; width: 100%; height: 100%; }
+        .overlay { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; z-index: 20; }
+        .overlay h2 { font-size: 1.8rem; margin-bottom: 12px; color: #38bdf8; }
+        .overlay p { font-size: 0.95rem; color: #94a3b8; margin-bottom: 24px; line-height: 1.5; }
+        .btn { background: #0284c7; color: white; border: none; padding: 14px 28px; font-size: 1rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3); z-index: 30; }
+        .btn:hover { background: #0369a1; }
+        .btn:active { transform: scale(0.98); }
+        .hidden { display: none !important; }
+        footer { padding: 12px; background: #0f172a; text-align: center; font-size: 0.75rem; color: #64748b; border-top: 1px solid #334155; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <header>
+        <h1>Legacy vs. AI Cage</h1>
+        <div class="score">Score: <span id="scoreVal">0</span></div>
+    </header>
+
+    <div id="canvasWrap">
+        <canvas id="gameCanvas" width="480" height="640"></canvas>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="overlay">
+            <h2>The 1945 Hardware Trap</h2>
+            <p>Your 2026 Autonomous AI agent is running on 1945 von Neumann iron. Dodge software bugs, avoid the <strong>Circular Dependency Trap</strong>, and deploy hardware enforcement before you crash!</p>
+            <button class="btn" id="startBtn">Launch Agent</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="overlay hidden">
+            <h2>System Crash!</h2>
+            <p id="finalScoreText">Software policing itself failed.</p>
+            <button class="btn" id="restartBtn">Reboot Core</button>
+        </div>
+    </div>
+
+    <footer>Tap or Click to Shift Lanes &bull; Avoid Legacy Bugs</footer>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let score = 0;
+let isPlaying = false;
+let gameSpeed = 4;
+let lanes = [90, 240, 390];
+let playerLane = 1;
+let obstacles = [];
+let frameCount = 0;
+
+const player = {
+    x: lanes[1],
+    y: 520,
+    radius: 22,
+    color: '#38bdf8'
+};
+
+const startBtn = document.getElementById('startBtn');
+const restartBtn = document.getElementById('restartBtn');
+const startScreen = document.getElementById('startScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+
+startBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startGame();
+});
+
+restartBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startGame();
+});
+
+const canvasWrap = document.getElementById('canvasWrap');
+canvasWrap.addEventListener('click', () => {
+    if (!isPlaying) return;
+    playerLane = (playerLane + 1) % 3;
+});
+
+window.addEventListener('keydown', (e) => {
+    if (!isPlaying) return;
+    if (e.key === 'ArrowLeft' && playerLane > 0) playerLane--;
+    if (e.key === 'ArrowRight' && playerLane < 2) playerLane++;
+});
+
+function startGame() {
+    score = 0;
+    gameSpeed = 4;
+    obstacles = [];
+    playerLane = 1;
+    isPlaying = true;
+    startScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    loop();
+}
+
+function spawnObstacle() {
+    const lane = Math.floor(Math.random() * 3);
+    const types = ['bug', 'circular', 'legacy'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    obstacles.push({
+        lane: lane,
+        y: -50,
+        type: type
+    });
+}
+
+function update() {
+    if (!isPlaying) return;
+
+    frameCount++;
+    score += Math.floor(gameSpeed / 2);
+    document.getElementById('scoreVal').innerText = score;
+
+    player.x += (lanes[playerLane] - player.x) * 0.2;
+    gameSpeed = 4 + Math.floor(score / 500);
+
+    if (frameCount % Math.max(30, 70 - Math.floor(score / 100)) === 0) {
+        spawnObstacle();
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].y += gameSpeed;
+
+        if (obstacles[i].lane === playerLane &&
+            obstacles[i].y > player.y - 30 &&
+            obstacles[i].y < player.y + 30) {
+            gameOver();
+        }
+
+        if (obstacles[i].y > canvas.height + 50) {
+            obstacles.splice(i, 1);
+        }
+    }
+}
+
+function drawGridBackground() {
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    let offset = (frameCount * gameSpeed) % 40;
+    for (let y = offset; y < canvas.height; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+    for (let x = 0; x < canvas.width; x += 60) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#334155';
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(165, 0); ctx.lineTo(165, canvas.height);
+    ctx.moveTo(315, 0); ctx.lineTo(315, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGridBackground();
+
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#38bdf8';
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius - 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    obstacles.forEach(obs => {
+        let ox = lanes[obs.lane];
+        let oy = obs.y;
+
+        ctx.save();
+        if (obs.type === 'bug') {
+            ctx.fillStyle = '#f43f5e';
+            ctx.fillRect(ox - 15, oy - 15, 30, 30);
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('BUG', ox - 13, oy + 4);
+        } else if (obs.type === 'circular') {
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(ox, oy, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText('TRAP', ox - 14, oy + 4);
+        } else {
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(ox - 20, oy - 12, 40, 24);
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px sans-serif';
+            ctx.fillText('1945', ox - 12, oy + 4);
+        }
+        ctx.restore();
+    });
+}
+
+function gameOver() {
+    isPlaying = false;
+    document.getElementById('finalScoreText').innerText = `Final Score: ${score}. Software guardrails failed on legacy iron.`;
+    gameOverScreen.classList.remove('hidden');
+}
+
+function loop() {
+    update();
+    draw();
+    if (isPlaying) {
+        requestAnimationFrame(loop);
+    }
+}
+</script>
+
+</body>
+</html>
